@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>QR Safe Tag</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<style>
+  :root{
+    --bg:#f4f6f8; --card:#ffffff; --text:#1a1d23; --muted:#6b7280;
+    --accent:#2563eb; --accent-text:#ffffff; --border:#e2e5ea;
+    box-sizing:border-box;
+    padding-top:env(safe-area-inset-top,0px);
+    padding-bottom:env(safe-area-inset-bottom,0px);
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#14161a; --card:#1e2126; --text:#eceef1; --muted:#9aa1ac;
+      --accent:#3b82f6; --accent-text:#ffffff; --border:#2c3038;
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#14161a; --card:#1e2126; --text:#eceef1; --muted:#9aa1ac;
+    --accent:#3b82f6; --accent-text:#ffffff; --border:#2c3038;
+  }
+  html{scroll-padding-top:env(safe-area-inset-top,0px);}
+  *{box-sizing:border-box;}
+  body{
+    margin:0; min-height:100%; background:var(--bg); color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    display:flex; justify-content:center; padding:32px 16px;
+  }
+  .wrap{width:100%; max-width:440px;}
+  .brand{text-align:center; margin-bottom:20px;}
+  .brand .logo{font-size:34px; line-height:1;}
+  .brand h1{font-size:20px; margin:8px 0 2px; letter-spacing:.2px;}
+  .brand p{color:var(--muted); font-size:13px; margin:0;}
+  .card{
+    background:var(--card); border:1px solid var(--border); border-radius:16px;
+    padding:24px; box-shadow:0 1px 3px rgba(0,0,0,.06);
+  }
+  .step{display:none;}
+  .step.active{display:block;}
+  label{display:block; font-size:13px; font-weight:600; margin:14px 0 6px; color:var(--text);}
+  label:first-of-type{margin-top:0;}
+  input[type=text], input[type=password], input[type=tel], input[type=email], textarea{
+    width:100%; padding:11px 12px; border:1px solid var(--border); border-radius:10px;
+    background:transparent; color:var(--text); font-size:14px; font-family:inherit;
+  }
+  textarea{resize:vertical; min-height:56px;}
+  input:focus, textarea:focus{outline:2px solid var(--accent); outline-offset:1px;}
+  .toggle{display:flex; gap:8px; margin-bottom:4px;}
+  .toggle button{
+    flex:1; padding:9px; border-radius:10px; border:1px solid var(--border);
+    background:transparent; color:var(--muted); font-size:13px; font-weight:600; cursor:pointer;
+  }
+  .toggle button.active{background:var(--accent); color:var(--accent-text); border-color:var(--accent);}
+  .btn{
+    width:100%; margin-top:20px; padding:13px; border:none; border-radius:10px;
+    background:var(--accent); color:var(--accent-text); font-size:15px; font-weight:700;
+    cursor:pointer;
+  }
+  .btn.secondary{background:transparent; color:var(--accent); border:1px solid var(--accent); margin-top:10px;}
+  .hint{font-size:12px; color:var(--muted); margin-top:10px; text-align:center;}
+  .error{color:#dc2626; font-size:12px; margin-top:8px; display:none;}
+  .qr-box{display:flex; justify-content:center; padding:8px; background:#fff; border-radius:12px; margin:16px 0;}
+  .summary{font-size:13px; color:var(--muted); line-height:1.6; background:rgba(37,99,235,.06); border-radius:10px; padding:12px 14px; margin-top:14px; word-break:break-word;}
+  .summary b{color:var(--text);}
+  .dots{display:flex; justify-content:center; gap:6px; margin-bottom:18px;}
+  .dots span{width:7px; height:7px; border-radius:50%; background:var(--border);}
+  .dots span.on{background:var(--accent);}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="brand">
+    <div class="logo">🏷️</div>
+    <h1>QR Safe Tag</h1>
+    <p>Scan-to-return ID for your valuables</p>
+  </div>
+
+  <div class="card">
+    <div class="dots" id="dots">
+      <span id="dot1" class="on"></span><span id="dot2"></span><span id="dot3"></span>
+    </div>
+
+    <!-- STEP 1: LOGIN -->
+    <div class="step active" id="step1">
+      <label for="username">Username</label>
+      <input type="text" id="username" placeholder="Choose a username" autocomplete="username">
+      <label for="password">Password</label>
+      <input type="password" id="password" placeholder="Choose a password" autocomplete="new-password">
+      <div class="error" id="err1">Please fill in both fields.</div>
+      <button class="btn" onclick="goStep2()">Continue</button>
+      <p class="hint">This account stays on this device only — nothing is uploaded.</p>
+    </div>
+
+    <!-- STEP 2: DETAILS (Personal + Guardian shown together) -->
+    <div class="step" id="step2">
+      <p style="font-size:13px; font-weight:700; margin:0 0 4px; color:var(--accent);">Personal Details</p>
+      <label for="name">Name</label>
+      <input type="text" id="name" placeholder="Full name">
+      <label for="phone">Phone</label>
+      <input type="tel" id="phone" placeholder="Contact number">
+      <label for="email">Email</label>
+      <input type="email" id="email" placeholder="Email address">
+      <label for="address">Address</label>
+      <textarea id="address" placeholder="Address for item return"></textarea>
+      <label for="pWebsite">Website <span style="color:var(--muted); font-weight:400;">(optional)</span></label>
+      <input type="text" id="pWebsite" placeholder="https://example.com">
+
+      <hr style="border:none; border-top:1px solid var(--border); margin:18px 0 4px;">
+      <p style="font-size:13px; font-weight:700; margin:14px 0 4px; color:var(--accent);">Guardian Details <span style="color:var(--muted); font-weight:400;">(optional)</span></p>
+      <label for="gName">Name</label>
+      <input type="text" id="gName" placeholder="Guardian's full name">
+      <label for="gPhone">Phone</label>
+      <input type="tel" id="gPhone" placeholder="Guardian's contact number">
+      <label for="gEmail">Email</label>
+      <input type="email" id="gEmail" placeholder="Guardian's email address">
+      <label for="gAddress">Address</label>
+      <textarea id="gAddress" placeholder="Guardian's address"></textarea>
+
+      <div class="error" id="err2">Please fill in name and at least one contact method.</div>
+      <button class="btn" onclick="goStep3()">Generate QR Code</button>
+      <button class="btn secondary" onclick="goStep(1)">Back</button>
+    </div>
+
+    <!-- STEP 3: QR CODE -->
+    <div class="step" id="step3">
+      <div class="qr-box" id="qrcode"></div>
+      <div class="summary" id="summaryBox"></div>
+      <button class="btn" onclick="downloadQR()">Download QR Code</button>
+      <button class="btn secondary" onclick="goStep(2)">Edit Details</button>
+    </div>
+
+    <!-- FOUND-ITEM VIEW: shown directly when the shareable link is opened -->
+    <div class="step" id="stepFound">
+      <div style="text-align:center; font-size:32px; margin-bottom:6px;">📇</div>
+      <h2 style="text-align:center; font-size:17px; margin:0 0 4px;">Found this item?</h2>
+      <p style="text-align:center; color:var(--muted); font-size:13px; margin:0 0 16px;" id="foundLabel"></p>
+      <div class="summary" id="foundBox"></div>
+      <a class="btn" id="foundCallBtn" style="display:block; text-align:center; text-decoration:none; box-sizing:border-box;">Call now</a>
+      <a class="btn secondary" id="foundGuardianCallBtn" style="display:none; text-align:center; text-decoration:none; box-sizing:border-box;">Call Guardian</a>
+      <button class="btn secondary" onclick="location.href = location.pathname">Create your own Safe Tag</button>
+    </div>
+  </div>
+</div>
+
+<script>
+let qrInstance = null;
+
+function goStep(n){
+  document.querySelectorAll('.step').forEach(s => s.classList.remove('active'));
+  document.getElementById('step'+n).classList.add('active');
+  ['dot1','dot2','dot3'].forEach((id,i) => {
+    document.getElementById(id).classList.toggle('on', i < n);
+  });
+}
+
+function goStep2(){
+  const u = document.getElementById('username').value.trim();
+  const p = document.getElementById('password').value.trim();
+  const err = document.getElementById('err1');
+  if(!u || !p){ err.style.display='block'; return; }
+  err.style.display='none';
+  try{
+    localStorage.setItem('qrSafeTagUser', JSON.stringify({username:u}));
+  }catch(e){}
+  goStep(2);
+}
+
+function goStep3(){
+  const name = document.getElementById('name').value.trim();
+  const phone = document.getElementById('phone').value.trim();
+  const email = document.getElementById('email').value.trim();
+  const address = document.getElementById('address').value.trim();
+  const pWebsite = document.getElementById('pWebsite').value.trim();
+
+  const gName = document.getElementById('gName').value.trim();
+  const gPhone = document.getElementById('gPhone').value.trim();
+  const gEmail = document.getElementById('gEmail').value.trim();
+  const gAddress = document.getElementById('gAddress').value.trim();
+
+  const err = document.getElementById('err2');
+  if(!name || (!phone && !email)){ err.style.display='block'; return; }
+  err.style.display='none';
+
+  const mapsLink = (addr) => addr ? 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(addr) : '';
+  const personalMapsUrl = mapsLink(address);
+  const guardianMapsUrl = mapsLink(gAddress);
+
+  // Build a shareable link carrying BOTH personal and guardian details —
+  // this is what goes in the QR/vCard as the website.
+  const shareParams = { name, phone, email, address };
+  if(pWebsite) shareParams.pWebsite = pWebsite;
+  if(gName) shareParams.gName = gName;
+  if(gPhone) shareParams.gPhone = gPhone;
+  if(gEmail) shareParams.gEmail = gEmail;
+  if(gAddress) shareParams.gAddress = gAddress;
+  const shareUrl = location.origin + location.pathname + '?' + new URLSearchParams(shareParams).toString();
+
+  // vCard: primary contact is the Personal record; Guardian details are
+  // folded into NOTE since standard vCard has no second-contact block.
+  const guardianNote = (gName || gPhone || gEmail || gAddress)
+    ? ' | Guardian: ' + [gName, gPhone, gEmail, gAddress].filter(Boolean).join(', ')
+    : '';
+  const vcardLines = [
+    'BEGIN:VCARD',
+    'VERSION:3.0',
+    'FN:' + name,
+    'NOTE:QR Safe Tag' + guardianNote,
+    phone ? 'TEL;TYPE=CELL:' + phone : null,
+    email ? 'EMAIL:' + email : null,
+    address ? 'ADR:;;' + address.replace(/\n/g, ' ') + ';;;;' : null,
+    personalMapsUrl ? 'URL;TYPE=maps:' + personalMapsUrl : null,
+    pWebsite ? 'URL:' + pWebsite : null,
+    'URL:' + shareUrl,
+    'END:VCARD'
+  ].filter(Boolean);
+  const qrText = vcardLines.join('\n');
+
+  // Render into a hidden holder first, then bake a real quiet zone onto a canvas
+  const holder = document.createElement('div');
+  holder.style.display = 'none';
+  document.body.appendChild(holder);
+  new QRCode(holder, {
+    text: qrText,
+    width: 200,
+    height: 200,
+    colorDark: '#000000',
+    colorLight: '#ffffff',
+    correctLevel: QRCode.CorrectLevel.M
+  });
+
+  // QRCode.js renders async-ish via DOM; wait a tick for the canvas/img to exist
+  setTimeout(() => {
+    const rawCanvas = holder.querySelector('canvas');
+    const rawImg = holder.querySelector('img');
+    const size = 200;
+    const quiet = 24; // quiet-zone margin in px, baked into the actual image
+
+    const finalCanvas = document.createElement('canvas');
+    finalCanvas.width = size + quiet * 2;
+    finalCanvas.height = size + quiet * 2;
+    const ctx = finalCanvas.getContext('2d');
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, finalCanvas.width, finalCanvas.height);
+
+    const draw = (source) => {
+      ctx.drawImage(source, quiet, quiet, size, size);
+      const qrBox = document.getElementById('qrcode');
+      qrBox.innerHTML = '';
+      finalCanvas.style.maxWidth = '100%';
+      finalCanvas.style.height = 'auto';
+      finalCanvas.style.display = 'block';
+      qrBox.appendChild(finalCanvas);
+      qrInstance = finalCanvas;
+      document.body.removeChild(holder);
+    };
+
+    if (rawCanvas) {
+      draw(rawCanvas);
+    } else if (rawImg) {
+      if (rawImg.complete) {
+        draw(rawImg);
+      } else {
+        rawImg.onload = () => draw(rawImg);
+      }
+    }
+  }, 30);
+
+  document.getElementById('summaryBox').innerHTML =
+    '<b>Personal Details</b><br>' +
+    'Name: ' + name + '<br>' +
+    (phone ? 'Phone: <a href="tel:' + phone + '" style="color:var(--accent);text-decoration:none;">' + phone + ' (tap to call)</a><br>' : '') +
+    (email ? 'Email: ' + email + '<br>' : '') +
+    (address ? 'Address: ' + address + ' <a href="' + personalMapsUrl + '" target="_blank" rel="noopener" style="color:var(--accent);text-decoration:none;">(view on Google Maps)</a><br>' : '') +
+    (pWebsite ? 'Website: <a href="' + pWebsite + '" target="_blank" rel="noopener" style="color:var(--accent);text-decoration:none;">' + pWebsite + '</a><br>' : '') +
+    'Shareable link (baked into the QR): <a href="' + shareUrl + '" target="_blank" rel="noopener" style="color:var(--accent);word-break:break-all;">' + shareUrl + '</a><br>' +
+    (gName || gPhone || gEmail || gAddress ?
+      '<br><b>Guardian Details</b><br>' +
+      (gName ? 'Name: ' + gName + '<br>' : '') +
+      (gPhone ? 'Phone: <a href="tel:' + gPhone + '" style="color:var(--accent);text-decoration:none;">' + gPhone + ' (tap to call)</a><br>' : '') +
+      (gEmail ? 'Email: ' + gEmail + '<br>' : '') +
+      (gAddress ? 'Address: ' + gAddress + ' <a href="' + guardianMapsUrl + '" target="_blank" rel="noopener" style="color:var(--accent);text-decoration:none;">(view on Google Maps)</a><br>' : '')
+      : '');
+
+  goStep(3);
+}
+
+async function downloadQR(){
+  const canvas = document.querySelector('#qrcode canvas');
+  if(!canvas) return;
+
+  const downloads = (window.claude && window.claude.use) ? await window.claude.use('downloads') : null;
+
+  if(downloads){
+    canvas.toBlob(async (blob) => {
+      try{
+        await downloads.save({ filename: 'qr-safe-tag.png', data: blob });
+      }catch(err){
+        if(err && err.code === 'declined'){
+          // viewer said no, nothing to do
+        }else{
+          alert('Could not save the file right now. Please try again.');
+        }
+      }
+    }, 'image/png');
+    return;
+  }
+
+  // Fallback for non-artifact contexts (opened as a plain local HTML file)
+  try{
+    const link = document.createElement('a');
+    link.download = 'qr-safe-tag.png';
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+  }catch(e){
+    alert('Right-click (or long-press) the QR code and choose "Save image" to download it.');
+  }
+}
+
+// If this page was opened via a shared QR/vCard link (has ?name=...&phone=...),
+// skip straight to the "Found this item?" view with a tap-to-call button —
+// don't make the finder log in or see the setup form at all.
+(function checkSharedLink(){
+  const params = new URLSearchParams(location.search);
+  const name = params.get('name');
+  if(!name) return; // normal app load, not a shared link
+
+  const phone = params.get('phone') || '';
+  const email = params.get('email') || '';
+  const address = params.get('address') || '';
+  const gName = params.get('gName') || '';
+  const gPhone = params.get('gPhone') || '';
+  const gEmail = params.get('gEmail') || '';
+  const gAddress = params.get('gAddress') || '';
+  const pWebsite = params.get('pWebsite') || '';
+
+  document.getElementById('dots').style.display = 'none';
+  document.querySelectorAll('.step').forEach(s => s.classList.remove('active'));
+  document.getElementById('stepFound').classList.add('active');
+
+  const mapsLink = (addr) => addr ? 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(addr) : '';
+
+  document.getElementById('foundLabel').textContent = 'Scan-to-return contact info';
+  document.getElementById('foundBox').innerHTML =
+    '<b>Personal Details</b><br>' +
+    'Name: ' + name + '<br>' +
+    (phone ? 'Phone: ' + phone + '<br>' : '') +
+    (email ? 'Email: ' + email + '<br>' : '') +
+    (address ? 'Address: ' + address + ' <a href="' + mapsLink(address) + '" target="_blank" rel="noopener" style="color:var(--accent);text-decoration:none;">(view on Maps)</a><br>' : '') +
+    (pWebsite ? 'Website: <a href="' + pWebsite + '" target="_blank" rel="noopener" style="color:var(--accent);text-decoration:none;">' + pWebsite + '</a><br>' : '') +
+    (gName || gPhone || gEmail || gAddress ?
+      '<br><b>Guardian Details</b><br>' +
+      (gName ? 'Name: ' + gName + '<br>' : '') +
+      (gPhone ? 'Phone: ' + gPhone + '<br>' : '') +
+      (gEmail ? 'Email: ' + gEmail + '<br>' : '') +
+      (gAddress ? 'Address: ' + gAddress + ' <a href="' + mapsLink(gAddress) + '" target="_blank" rel="noopener" style="color:var(--accent);text-decoration:none;">(view on Maps)</a>' : '')
+      : '');
+
+  const callBtn = document.getElementById('foundCallBtn');
+  if(phone){
+    callBtn.href = 'tel:' + phone;
+    callBtn.textContent = 'Call ' + name + ' now';
+  } else {
+    callBtn.style.display = 'none';
+  }
+
+  const gCallBtn = document.getElementById('foundGuardianCallBtn');
+  if(gPhone){
+    gCallBtn.href = 'tel:' + gPhone;
+    gCallBtn.textContent = 'Call Guardian (' + gName + ')';
+    gCallBtn.style.display = 'block';
+  }
+})();
+</script>
+</body>
+</html>
